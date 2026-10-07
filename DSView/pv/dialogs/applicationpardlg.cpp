@@ -135,7 +135,19 @@ bool ApplicationParamDlg::ShowDlg(QWidget *parent)
     QComboBox *ftCbSize = new DsComboBox();
     ftCbSize->setFixedWidth(50);
     bind_font_size_list(ftCbSize, app.appOptions.fontSize);
-   
+
+    QComboBox *uiCbScale = new DsComboBox();
+    uiCbScale->setFixedWidth(80);
+    uiCbScale->addItem(L_S(STR_PAGE_DLG, S_ID(IDS_DLG_UI_SCALE_AUTO), "Auto"));
+    const char *scaleItems[] = {"100%", "125%", "150%", "175%", "200%"};
+    int selScale = 0;
+    for (int i = 0; i < 5; i++) {
+        uiCbScale->addItem(scaleItems[i]);
+        if (app.appOptions.uiScalePercent == atoi(scaleItems[i]))
+            selScale = i + 1;
+    }
+    uiCbScale->setCurrentIndex(selScale);
+
     // Logic group
     QGroupBox *logicGroup = new QGroupBox(L_S(STR_PAGE_DLG, S_ID(IDS_DLG_GROUP_LOGIC), "Logic"));
     QGridLayout *logicLay = new QGridLayout();
@@ -168,8 +180,10 @@ bool ApplicationParamDlg::ShowDlg(QWidget *parent)
     uiGroup->setLayout(uiLay);
     uiLay->addWidget(new QLabel(L_S(STR_PAGE_DLG, S_ID(IDS_DLG_DISPLAY_PROFILE_IN_BAR), "Profile in bar")), 0, 0, Qt::AlignLeft);
     uiLay->addWidget(ck_profileBar, 0, 1, Qt::AlignRight);
-    uiLay->addWidget(new QLabel(L_S(STR_PAGE_DLG, S_ID(IDS_DLG_FONT_SIZE), "Font size")), 1, 0, Qt::AlignLeft);
-    uiLay->addWidget(ftCbSize, 1, 1, Qt::AlignRight);
+    uiLay->addWidget(new QLabel(L_S(STR_PAGE_DLG, S_ID(IDS_DLG_UI_SCALE), "UI Scale (restart to apply)")), 1, 0, Qt::AlignLeft);
+    uiLay->addWidget(uiCbScale, 1, 1, Qt::AlignRight);
+    uiLay->addWidget(new QLabel(L_S(STR_PAGE_DLG, S_ID(IDS_DLG_FONT_SIZE), "Font size")), 2, 0, Qt::AlignLeft);
+    uiLay->addWidget(ftCbSize, 2, 1, Qt::AlignRight);
     lay->addWidget(uiGroup);
 
     dlg.layout()->addLayout(lay);      
@@ -207,7 +221,15 @@ bool ApplicationParamDlg::ShowDlg(QWidget *parent)
             app.appOptions.autoScrollLatestData = ck_autoScrollLatestData->isChecked();
             bAppChanged = true;
         }
- 
+
+        int uiPct = uiCbScale->currentIndex() <= 0
+                  ? 0
+                  : atoi(uiCbScale->currentText().toStdString().c_str());
+        if (app.appOptions.uiScalePercent != uiPct){
+            app.appOptions.uiScalePercent = uiPct;
+            bAppChanged = true;
+        }
+
         if (bAppChanged){
             app.SaveApp();
             AppControl::Instance()->GetSession()->broadcast_msg(DSV_MSG_APP_OPTIONS_CHANGED);

@@ -806,5 +806,13 @@
     {
         "id": "IDS_DLG_WAVE_COPY_DATA",
         "text": "Copy Data"
+    },
+    {
+        "id": "IDS_DLG_UI_SCALE",
+        "text": "UI Scale (restart to apply)"
+    },
+    {
+        "id": "IDS_DLG_UI_SCALE_AUTO",
+        "text": "Auto"
     }
 ]

@@ -62,6 +62,7 @@ struct AppOptions
     int   version;
     bool  quickScroll;
     bool  waveSelectMode;
+    int   uiScalePercent;
     bool  warnofMultiTrig;
     bool  originalData;
     bool  ableSaveLog;

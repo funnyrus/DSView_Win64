@@ -36,6 +36,8 @@
 #include "pv/log.h" 
 #include "pv/ui/langresource.h"
 #include <QDateTime>
+#include <QFont>
+#include <QSettings>
 #include <string>
 #include <ds_types.h>
 
@@ -142,7 +144,48 @@ int main(int argc, char *argv[])
 	}
 
 	//----------------------HightDpiScaling
-#if QT_VERSION >= QT_VERSION_CHECK(5,6,0)
+#if QT_VERSION >= QT_VERSION_CHECK(6,0,0)
+	// Qt6 enables high-DPI scaling unconditionally with fractional factors,
+	// so the code below (written for Qt5) has no effect and text renders 25%
+	// larger than the official Qt 5.14 build on a 125% screen. The official
+	// build keeps fonts on a 96 dpi baseline while rounding the device pixel
+	// ratio to the nearest integer (and opts out entirely on small
+	// high-scale screens). Setting QT_SCALE_FACTOR to target/native
+	// reproduces exactly that: dpr rounds as in Qt5 and logicalDpi stays 96.
+	{
+		DWORD appliedDpi = 96, cbSize = sizeof(appliedDpi);
+		HKEY key;
+		if (RegOpenKeyExW(HKEY_CURRENT_USER, L"Control Panel\\Desktop\\WindowMetrics",
+		                  0, KEY_READ, &key) == ERROR_SUCCESS) {
+			RegQueryValueExW(key, L"AppliedDPI", NULL, NULL, (LPBYTE)&appliedDpi, &cbSize);
+			RegCloseKey(key);
+		}
+		// system scale factor; the process is still DPI-unaware here, so
+		// GetSystemMetrics returns virtualized (unscaled) pixels
+		const float sk = appliedDpi / 96.0f;
+		const int sy = (int)(GetSystemMetrics(SM_CYSCREEN) * sk);
+
+		// user override from the display options dialog ("UI Scale");
+		// read directly from the registry because the config system is
+		// initialized after QApplication. 0 = follow the official behavior.
+		int uiPct = 0;
+		{
+			QSettings st("DreamSourceLab", "DSView");
+			uiPct = st.value("Application/uiScalePercent", 0).toInt();
+		}
+
+		// target device pixel ratio: the user choice, or the Qt5 build
+		// behavior (integer-rounded, or 1.0 on small screens with large
+		// scale, the AA_DisableHighDpiScaling branch)
+		const float target = (uiPct > 0)
+			? uiPct / 100.0f
+			: ((sk >= 1.5f && sy <= 1080) ? 1.0f : std::round(sk));
+
+		char buf[32];
+		snprintf(buf, sizeof(buf), "%.6f", target / sk);
+		qputenv("QT_SCALE_FACTOR", buf);
+	}
+#elif QT_VERSION >= QT_VERSION_CHECK(5,6,0)
 bool bHighScale = true;
 
 #ifdef _WIN32
@@ -163,11 +206,18 @@ bool bHighScale = true;
 		QApplication::setAttribute(Qt::AA_EnableHighDpiScaling);
       	QApplication::setAttribute(Qt::AA_UseHighDpiPixmaps);
 	}
-#endif 
+#endif
 
 	//----------------------init app
     QApplication a(argcFinal, argvFinal);
     a.setStyle(new MyStyle);
+
+    // render fonts fully hinted so small text stays crisp at 1x scale
+    {
+        QFont appFont = a.font();
+        appFont.setHintingPreference(QFont::PreferFullHinting);
+        a.setFont(appFont);
+    }
 
     // Set some application metadata
     QApplication::setApplicationVersion(DS_VERSION_STRING);

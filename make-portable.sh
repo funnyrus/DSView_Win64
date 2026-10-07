@@ -81,25 +81,46 @@ echo "== Deploying Qt runtime"
 windeployqt6 --release --no-translations "$PORTABLE/DSView.exe" >/dev/null
 
 #--- 3. non-Qt runtime DLLs (recursive dependency scan) -------------------
-SYSTEM32="$(cygpath -u "$WINDIR" 2>/dev/null)/System32"
-[ -d "$SYSTEM32" ] || SYSTEM32="/c/Windows/System32"
+# Windows-owned system DLLs are never copied. Anything else a dependency
+# needs is taken from mingw64 EVEN IF a same-named (possibly older) copy
+# exists in System32 or on the target machine's PATH - e.g. old zlib1.dll
+# copies installed by other software break libpng (inflateReset2).
+SYSTEM_DLLS="kernel32.dll user32.dll gdi32.dll shell32.dll advapi32.dll \
+ole32.dll oleaut32.dll ntdll.dll msvcrt.dll ucrtbase.dll ws2_32.dll \
+version.dll winmm.dll imm32.dll dwmapi.dll uxtheme.dll shcore.dll \
+shlwapi.dll crypt32.dll ncrypt.dll bcrypt.dll secur32.dll winhttp.dll \
+dnsapi.dll iphlpapi.dll netapi32.dll mpr.dll authz.dll userenv.dll \
+wtsapi32.dll setupapi.dll comdlg32.dll rpcrt4.dll usp10.dll gdiplus.dll \
+comctl32.dll wintrust.dll msimg32.dll opengl32.dll glu32.dll dbghelp.dll \
+psapi.dll wldap32.dll normaliz.dll d3d9.dll d3d11.dll d3d12.dll dxgi.dll \
+dwrite.dll uuid.dll"
+
+is_system_dll() {
+    local name="$1"
+    case "$name" in
+        api-ms-*|ext-ms-*|rtm-ms-* ) return 0 ;;
+    esac
+    local lower="${name,,}"
+    for name in $SYSTEM_DLLS; do
+        [ "$name" = "$lower" ] && return 0
+    done
+    return 1
+}
 
 echo "== Scanning DLL dependencies"
 SEEN=";"
 copy_deps() {
-    local file="$1" dll dep
+    local file="$1" dll
     for dll in $(objdump -p "$file" 2>/dev/null | sed -n 's/.*DLL Name: //p'); do
         case ";$SEEN;" in *";$dll;"*) continue ;; esac
         SEEN="$SEEN$dll;"
-        if [ -f "$PORTABLE/$dll" ]; then
-            copy_deps "$PORTABLE/$dll"
-            continue
-        fi
-        # system DLLs ship with Windows, everything else comes from mingw64
-        if [ ! -f "$SYSTEM32/$dll" ] && [ -f "$MINGW/$dll" ]; then
+        is_system_dll "$dll" && continue
+        if [ -f "$MINGW/$dll" ]; then
             cp "$MINGW/$dll" "$PORTABLE/"
             echo "  copied $dll"
             copy_deps "$PORTABLE/$dll"
+        else
+            echo "  WARNING: $dll not found in mingw64 and not a known system DLL"
         fi
     done
 }

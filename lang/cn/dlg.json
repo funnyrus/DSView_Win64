@@ -806,5 +806,13 @@
     {
         "id": "IDS_DLG_WAVE_COPY_DATA",
         "text": "复制数据"
+    },
+    {
+        "id": "IDS_DLG_UI_SCALE",
+        "text": "界面缩放(重启生效)"
+    },
+    {
+        "id": "IDS_DLG_UI_SCALE_AUTO",
+        "text": "自动"
     }
 ]
