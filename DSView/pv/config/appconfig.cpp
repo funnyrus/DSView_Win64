@@ -112,6 +112,7 @@ static void _loadApp(AppOptions &o, QSettings &st)
 {
     st.beginGroup("Application"); 
     getFiled("quickScroll", st, o.quickScroll, true);
+    getFiled("waveSelectMode", st, o.waveSelectMode, true);
     getFiled("warnofMultiTrig", st, o.warnofMultiTrig, true);
     getFiled("originalData", st, o.originalData, false);
     getFiled("ableSaveLog", st, o.ableSaveLog, false);
@@ -149,6 +150,7 @@ static void _saveApp(AppOptions &o, QSettings &st)
 {
     st.beginGroup("Application");
     setFiled("quickScroll", st, o.quickScroll);
+    setFiled("waveSelectMode", st, o.waveSelectMode);
     setFiled("warnofMultiTrig", st, o.warnofMultiTrig);
     setFiled("originalData", st, o.originalData);
     setFiled("ableSaveLog", st, o.ableSaveLog);

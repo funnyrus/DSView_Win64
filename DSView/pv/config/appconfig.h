@@ -61,6 +61,7 @@ struct AppOptions
 {   
     int   version;
     bool  quickScroll;
+    bool  waveSelectMode;
     bool  warnofMultiTrig;
     bool  originalData;
     bool  ableSaveLog;

@@ -148,6 +148,10 @@
         "text": "&Capture..."
     },
     {
+        "id": "IDS_TOOLBAR_WAVE_SELECT",
+        "text": "Wave Select"
+    },
+    {
         "id": "IDS_TOOLBAR_HELP",
         "text": "&Help"
     },

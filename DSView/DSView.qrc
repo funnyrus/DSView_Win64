@@ -145,5 +145,7 @@
         <file>icons/dark/log.svg</file>
         <file>icons/light/update.svg</file>
         <file>icons/dark/update.svg</file>
+        <file>icons/light/dashed-box-cursor.svg</file>
+        <file>icons/dark/dashed-box-cursor.svg</file>
     </qresource>
 </RCC>

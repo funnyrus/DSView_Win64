@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <!-- 虚线方框 -->
+  <rect x="6" y="6" width="44" height="44" fill="none" stroke="#2A2A2A" stroke-width="3" stroke-dasharray="7 5" stroke-linecap="round"/>
+
+  <!-- 鼠标指针（右下角，白色描边便于压线时辨识） -->
+  <path d="M41 38 L41 59.5 L46.6 54.6 L50 62 L54.9 59.8 L51.5 52.6 L59 52.1 Z"
+        fill="#2A2A2A" stroke="#fff" stroke-width="2" stroke-linejoin="round"/>
+</svg>

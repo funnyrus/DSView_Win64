@@ -42,6 +42,7 @@ class QPainter;
 class QPaintEvent;
 class SigSession;
 class QAction;
+class QMenu;
 
 using std::chrono::high_resolution_clock;
 using std::chrono::milliseconds;
@@ -91,7 +92,9 @@ public:
         DSO_XM_STEP1,
         DSO_XM_STEP2,
         DSO_YM,
-        DSO_TRIG_MOVE
+        DSO_TRIG_MOVE,
+
+        WAVE_SELECT
     };
 
     enum MeasureType {
@@ -155,6 +158,9 @@ private:
     void onDsoMouseRelease(QMouseEvent *event);
     void onAnalogMouseRelease(QMouseEvent *event);
 
+    void do_export_waveform_csv(int target);
+    void do_export_decoded_txt(int target);
+
 private slots:
     void on_trigger_timer();
     void on_drag_timer();
@@ -162,6 +168,12 @@ private slots:
     void show_contextmenu(const QPoint& pos);
     void add_cursor_x();
     void add_cursor_y();
+
+    // Wave selection / export slots
+    void on_export_waveform_csv();
+    void on_export_decoded_txt();
+    void on_copy_waveform();
+    void on_copy_data();
 
 signals:
     void measure_updated();
@@ -242,6 +254,12 @@ private:
     int             _tigger_wait_times;
     QAction         *_yAction;
     QAction         *_xAction;
+
+    // Wave selection
+    bool            _has_selection;
+    uint64_t        _select_start_sample;
+    uint64_t        _select_end_sample;
+    QMenu           *_wave_menu;
 };
 
 } // namespace view

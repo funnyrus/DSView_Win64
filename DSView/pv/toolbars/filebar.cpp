@@ -72,7 +72,12 @@ FileBar::FileBar(SigSession *session, QWidget *parent) :
      
     _action_capture = new QAction(this);
     _action_capture->setObjectName(QString::fromUtf8("actionCapture"));
- 
+
+    _action_wavesel = new QAction(this);
+    _action_wavesel->setObjectName(QString::fromUtf8("actionWaveSel"));
+    _action_wavesel->setCheckable(true);
+    _action_wavesel->setChecked(AppConfig::Instance().appOptions.waveSelectMode);
+
     _file_button.setToolButtonStyle(Qt::ToolButtonTextUnderIcon);
     _file_button.setPopupMode(QToolButton::InstantPopup);
 
@@ -84,6 +89,8 @@ FileBar::FileBar(SigSession *session, QWidget *parent) :
     _menu->addAction(_action_capture);
     _file_button.setMenu(_menu);
     addWidget(&_file_button);
+    addAction(_action_wavesel);
+    setToolButtonStyle(Qt::ToolButtonTextUnderIcon);
 
     connect(_action_load, SIGNAL(triggered()), this, SLOT(on_actionLoad_triggered()));
     connect(_action_store, SIGNAL(triggered()), this, SLOT(on_actionStore_triggered()));
@@ -92,6 +99,7 @@ FileBar::FileBar(SigSession *session, QWidget *parent) :
     connect(_action_save, SIGNAL(triggered()), this, SIGNAL(sig_save()));
     connect(_action_export, SIGNAL(triggered()), this, SIGNAL(sig_export()));
     connect(_action_capture, SIGNAL(triggered()), this, SLOT(on_actionCapture_triggered()));
+    connect(_action_wavesel, SIGNAL(toggled(bool)), this, SLOT(on_actionWaveSel_toggled(bool)));
 
     ADD_UI(this);
 }
@@ -112,6 +120,8 @@ void FileBar::retranslateUi()
     _action_save->setText(L_S(STR_PAGE_TOOLBAR, S_ID(IDS_TOOLBAR_FILE_SAVE), "&Save..."));
     _action_export->setText(L_S(STR_PAGE_TOOLBAR, S_ID(IDS_TOOLBAR_FILE_EXPORT), "&Export..."));
     _action_capture->setText(L_S(STR_PAGE_TOOLBAR, S_ID(IDS_TOOLBAR_FILE_CAPTURE), "&Capture..."));
+
+    _action_wavesel->setText(L_S(STR_PAGE_TOOLBAR, S_ID(IDS_TOOLBAR_WAVE_SELECT), "Wave Select"));
 }
 
 void FileBar::reStyle()
@@ -127,6 +137,7 @@ void FileBar::reStyle()
     _action_export->setIcon(QIcon(iconPath+"/export.svg"));
     _action_capture->setIcon(QIcon(iconPath+"/capture.svg"));
     _file_button.setIcon(QIcon(iconPath+"/file.svg"));
+    _action_wavesel->setIcon(QIcon(iconPath+"/dashed-box-cursor.svg"));
 }
 
 void FileBar::on_actionOpen_triggered()
@@ -239,6 +250,13 @@ void FileBar::on_actionCapture_triggered()
     _file_button.close();
     QCoreApplication::sendPostedEvents();
     QTimer::singleShot(100, this, SIGNAL(sig_screenShot()));
+}
+
+void FileBar::on_actionWaveSel_toggled(bool checked)
+{
+    AppConfig &app = AppConfig::Instance();
+    app.appOptions.waveSelectMode = checked;
+    app.SaveApp();
 }
 
 void FileBar::update_view_status()

@@ -35,9 +35,20 @@
 
 #include <QMouseEvent>
 #include <QStyleOption>
-#include <QPainterPath> 
+#include <QPainterPath>
 #include <math.h>
 #include <QWheelEvent>
+#include <QMenu>
+#include <QFileDialog>
+#include <QMessageBox>
+#include <QApplication>
+#include <QClipboard>
+#include <QFileInfo>
+#include <QDir>
+#include <QFile>
+#include <QTextStream>
+
+#include "../data/decoderstack.h"
  
 #include "../config/appconfig.h"
 #include "../dsvdef.h"
@@ -75,7 +86,10 @@ Viewport::Viewport(View &parent, View_type type) :
     _waiting_trig(0),
     _dso_trig_moved(false),
     _curs_moved(false),
-    _xcurs_moved(false)
+    _xcurs_moved(false),
+    _has_selection(false),
+    _select_start_sample(0),
+    _select_end_sample(0)
 {
 	setMouseTracking(true);
 	setAutoFillBackground(true);
@@ -114,6 +128,13 @@ Viewport::Viewport(View &parent, View_type type) :
     connect(yAction, SIGNAL(triggered(bool)), this, SLOT(add_cursor_y()));
     connect(xAction, SIGNAL(triggered(bool)), this, SLOT(add_cursor_x()));
     connect(this, SIGNAL(customContextMenuRequested(const QPoint&)),this, SLOT(show_contextmenu(const QPoint&)));
+
+    // Wave selection context menu
+    _wave_menu = new QMenu(this);
+    _wave_menu->addAction(L_S(STR_PAGE_DLG, S_ID(IDS_DLG_WAVE_EXPORT_CSV), "Export Waveform CSV"), this, SLOT(on_export_waveform_csv()));
+    _wave_menu->addAction(L_S(STR_PAGE_DLG, S_ID(IDS_DLG_WAVE_EXPORT_DECODE), "Export Decoded Data"), this, SLOT(on_export_decoded_txt()));
+    _wave_menu->addAction(L_S(STR_PAGE_DLG, S_ID(IDS_DLG_WAVE_COPY_WAVEFORM), "Copy Waveform"), this, SLOT(on_copy_waveform()));
+    _wave_menu->addAction(L_S(STR_PAGE_DLG, S_ID(IDS_DLG_WAVE_COPY_DATA), "Copy Data"), this, SLOT(on_copy_data()));
 
     ADD_UI(this);
 }
@@ -400,6 +421,17 @@ void Viewport::paintSignals(QPainter &p, QColor fore, QColor back)
             p.drawRect(QRectF(_mouse_down_point, _mouse_point));
         }
 
+        // Draw wave selection rect
+        if (_action_type == WAVE_SELECT || _has_selection) {
+            int x1 = _view.index2pixel(_select_start_sample);
+            int x2 = _view.index2pixel(_select_end_sample);
+            if (x1 > x2) std::swap(x1, x2);
+            QRect selRect(x1, xrect.top(), x2 - x1, xrect.height());
+            p.setPen(QPen(View::Blue, 1, Qt::DashLine));
+            p.setBrush(QColor(0, 120, 215, 40));
+            p.drawRect(selRect);
+        }
+
         //plot measure arrow
         paintMeasure(p, fore, back);
 
@@ -646,8 +678,15 @@ void Viewport::mousePressEvent(QMouseEvent *event)
     _drag_strength = 0;
     _elapsed_time.restart();
 
+    // Clear wave selection on new left click
+    if (event->button() == Qt::LeftButton && _has_selection) {
+        _has_selection = false;
+        QWidget::update();
+    }
+
     if (_action_type == NO_ACTION
         && event->button() == Qt::RightButton
+        && !_has_selection
         && _view.session().is_stopped_status())
     {
         if (_view.session().get_device()->get_work_mode() == LOGIC) {
@@ -782,6 +821,15 @@ void Viewport::mousePressEvent(QMouseEvent *event)
                 i++;
             }
         }
+
+        // Start wave selection if enabled and no other action was triggered
+        if (AppConfig::Instance().appOptions.waveSelectMode
+            && _action_type == NO_ACTION && _type == TIME_VIEW) {
+            _has_selection = false;
+            _select_start_sample = _view.pixel2index(event->pos().x());
+            _select_end_sample = _select_start_sample;
+            set_action(WAVE_SELECT);
+        }
     }
 }
 
@@ -793,6 +841,7 @@ void Viewport:: mouseMoveEvent(QMouseEvent *event)
 
     if (event->buttons() & Qt::LeftButton) {
         if (_type == TIME_VIEW) {
+            // pans only when wave-select mode is off (then action stays NO_ACTION)
             if (_action_type == NO_ACTION) {
                 int64_t x = _mouse_down_offset + (_mouse_down_point - event->pos()).x();
                 _view.set_scale_offset(_view.scale(), x);
@@ -808,6 +857,15 @@ void Viewport:: mouseMoveEvent(QMouseEvent *event)
                 }
             }
         }
+    }
+
+    // Right-drag also pans the time view (left-drag may be in wave-select mode)
+    if ((event->buttons() & Qt::RightButton) && _type == TIME_VIEW) {
+        if (_action_type == NO_ACTION) {
+            int64_t x = _mouse_down_offset + (_mouse_down_point - event->pos()).x();
+            _view.set_scale_offset(_view.scale(), x);
+        }
+        _drag_strength = (_mouse_down_point - event->pos()).x();
     }
 
     if (_type == TIME_VIEW) {
@@ -924,10 +982,14 @@ void Viewport:: mouseMoveEvent(QMouseEvent *event)
         }
     }
 
+    if (_action_type == WAVE_SELECT) {
+        _select_end_sample = _view.pixel2index(event->pos().x());
+    }
+
     _mouse_point = event->pos();
 
     measure();
-   
+
     update(UpdateEventType::UPDATE_EV_MS_MOVE);
 }
 
@@ -1191,6 +1253,20 @@ void Viewport::mouseReleaseEvent(QMouseEvent *event)
     if (_type != TIME_VIEW){
         update(UpdateEventType::UPDATE_EV_MS_UP);
         return;
+    }
+
+    // Finalize wave selection first
+    if (_action_type == WAVE_SELECT) {
+        if (_select_start_sample != _select_end_sample) {
+            if (_select_start_sample > _select_end_sample) {
+                std::swap(_select_start_sample, _select_end_sample);
+            }
+            _has_selection = true;
+            set_action(NO_ACTION);
+            QWidget::update();
+            return;
+        }
+        set_action(NO_ACTION);
     }
 
     int mode = _view.session().get_device()->get_work_mode();
@@ -2119,7 +2195,12 @@ bool Viewport::get_dso_trig_moved()
 
 void Viewport::show_contextmenu(const QPoint& pos)
 {
-    if(_cmenu &&
+    if (_has_selection && _wave_menu) {
+        _cur_preX = pos.x();
+        _cur_preY = pos.y();
+        _wave_menu->exec(QCursor::pos());
+    }
+    else if(_cmenu &&
        _view.session().get_device()->get_work_mode() == DSO)
     {
         _cur_preX = pos.x();
@@ -2154,11 +2235,289 @@ void Viewport::UpdateTheme()
 }
 
 void Viewport::UpdateFont()
-{ 
+{
     QFont font = this->font();
     font.setPointSizeF(AppConfig::Instance().appOptions.fontSize);
     _yAction->setFont(font);
     _xAction->setFont(font);
+}
+
+//===============================================================================
+// Wave Selection & Export
+//===============================================================================
+
+#define EXPORT_TO_FILE       0
+#define EXPORT_TO_CLIPBOARD  1
+
+void Viewport::on_export_waveform_csv()
+{
+    do_export_waveform_csv(EXPORT_TO_FILE);
+}
+
+void Viewport::on_export_decoded_txt()
+{
+    do_export_decoded_txt(EXPORT_TO_FILE);
+}
+
+void Viewport::on_copy_waveform()
+{
+    do_export_waveform_csv(EXPORT_TO_CLIPBOARD);
+}
+
+void Viewport::on_copy_data()
+{
+    do_export_decoded_txt(EXPORT_TO_CLIPBOARD);
+}
+
+void Viewport::do_export_waveform_csv(int target)
+{
+    if (!_has_selection) return;
+    if (_select_start_sample >= _select_end_sample) return;
+
+    const uint64_t start_sample = _select_start_sample;
+    const uint64_t end_sample = _select_end_sample;
+
+    uint64_t samplerate = _view.session().cur_samplerate();
+    if (samplerate == 0) samplerate = 1;
+
+    QString csv;
+    QTextStream ts(&csv);
+
+    auto &sigs = _view.session().get_signals();
+    int mode = _view.session().get_device()->get_work_mode();
+
+    // Header
+    ts << "Time(s)";
+    std::vector<view::Signal*> exportSigs;
+    for (auto s : sigs) {
+        if (!s->enabled()) continue;
+        if (mode == LOGIC && s->signal_type() != SR_CHANNEL_LOGIC) continue;
+        if (mode == DSO && s->signal_type() != SR_CHANNEL_DSO) continue;
+        if (mode == ANALOG && s->signal_type() != SR_CHANNEL_ANALOG) continue;
+        exportSigs.push_back(s);
+        int chIdx = s->probe()->index;
+        QString chName = QString::fromUtf8(s->probe()->name);
+        ts << ",CH" << chIdx << "(" << chName << ")";
+    }
+    ts << "\n";
+
+    if (exportSigs.empty()) {
+        QMessageBox::warning(this, "Export Waveform", "No enabled signals to export.");
+        return;
+    }
+
+    // Determine file path (skip for clipboard)
+    QString filePath;
+    if (target != EXPORT_TO_CLIPBOARD) {
+        QString defaultDir = AppConfig::Instance().userHistory.exportDir;
+        if (defaultDir.isEmpty()) defaultDir = QDir::homePath();
+
+        double startTime = start_sample / (double)samplerate;
+        double duration = (end_sample - start_sample) / (double)samplerate;
+        QString defaultName = QString("waveform_%1s_%2s.csv")
+            .arg(startTime, 0, 'f', 6)
+            .arg(duration, 0, 'f', 6);
+
+        filePath = QFileDialog::getSaveFileName(this,
+            L_S(STR_PAGE_DLG, S_ID(IDS_DLG_WAVE_EXPORT_CSV), "Export Waveform CSV"),
+            defaultDir + "/" + defaultName,
+            "CSV Files (*.csv)");
+        if (filePath.isEmpty()) return;
+        QFileInfo fi(filePath);
+        AppConfig::Instance().userHistory.exportDir = fi.absolutePath();
+    }
+
+    // Write data rows (only start point, change points, and end point)
+    const uint64_t sampleCount = end_sample - start_sample;
+
+    // Pre-fetch DSO sample data pointers
+    std::vector<const uint8_t*> dsoDataPtrs(exportSigs.size(), nullptr);
+    if (mode == DSO) {
+        for (size_t ci = 0; ci < exportSigs.size(); ci++) {
+            view::DsoSignal *dsoSig = (view::DsoSignal*)exportSigs[ci];
+            int chIndex = dsoSig->probe()->index;
+            dsoDataPtrs[ci] = dsoSig->data()->get_samples(start_sample, end_sample, chIndex);
+        }
+    }
+
+    auto readValue = [&](size_t ci, uint64_t i) -> int {
+        if (mode == DSO) {
+            if (dsoDataPtrs[ci]) return (int)dsoDataPtrs[ci][i];
+            return 0;
+        } else if (mode == LOGIC) {
+            view::LogicSignal *logicSig = (view::LogicSignal*)exportSigs[ci];
+            int sigIndex = logicSig->probe()->index;
+            uint64_t sampleIdx = start_sample + i;
+            return logicSig->data()->get_sample(sampleIdx, sigIndex) ? 1 : 0;
+        }
+        return 0;
+    };
+
+    std::vector<int> prevValues(exportSigs.size(), 0);
+    uint64_t rowCount = 0;
+
+    for (uint64_t i = 0; i < sampleCount; i++) {
+        bool firstRow = (i == 0);
+        bool lastRow = (i == sampleCount - 1);
+        bool changed = firstRow || lastRow;
+
+        for (size_t ci = 0; ci < exportSigs.size(); ci++) {
+            int v = readValue(ci, i);
+            if (!firstRow && v != prevValues[ci])
+                changed = true;
+            prevValues[ci] = v;
+        }
+
+        if (changed) {
+            uint64_t sampleIdx = start_sample + i;
+            double t = sampleIdx / (double)samplerate;
+            ts << QString::number(t, 'f', 9);
+            for (size_t ci = 0; ci < exportSigs.size(); ci++) {
+                ts << "," << prevValues[ci];
+            }
+            ts << "\n";
+            rowCount++;
+        }
+    }
+
+    // Copy to clipboard
+    if (target == EXPORT_TO_CLIPBOARD) {
+        QApplication::clipboard()->setText(csv);
+        QMessageBox::information(this, "Copy Waveform",
+            QString("Waveform copied to clipboard.\n(%1 of %2 samples kept, %3 signals)")
+            .arg(rowCount).arg(sampleCount).arg(exportSigs.size()));
+        return;
+    }
+
+    // Write file
+    QFile file(filePath);
+    if (!file.open(QIODevice::WriteOnly | QIODevice::Text)) {
+        QMessageBox::warning(this, "Export Waveform", "Failed to write file: " + filePath);
+        return;
+    }
+    file.write(csv.toUtf8());
+    file.close();
+
+    QMessageBox::information(this, "Export Waveform",
+        QString("Waveform saved to:\n%1\n(%2 of %3 samples kept, %4 signals)")
+        .arg(filePath).arg(rowCount).arg(sampleCount).arg(exportSigs.size()));
+}
+
+void Viewport::do_export_decoded_txt(int target)
+{
+    if (!_has_selection) return;
+    if (_select_start_sample >= _select_end_sample) return;
+
+    const uint64_t start_sample = _select_start_sample;
+    const uint64_t end_sample = _select_end_sample;
+
+    uint64_t samplerate = _view.session().cur_samplerate();
+    if (samplerate == 0) samplerate = 1;
+
+    double startTime = start_sample / (double)samplerate;
+    double duration = (end_sample - start_sample) / (double)samplerate;
+
+    QString text;
+    QTextStream ts(&text);
+
+    ts << "Decoded Data Export\n";
+    ts << "Start: " << QString::number(startTime, 'f', 9) << " s";
+    ts << "  Duration: " << QString::number(duration, 'f', 9) << " s\n";
+    ts << "Sample Range: " << start_sample << " - " << end_sample << "\n";
+
+    auto &sigs = _view.session().get_signals();
+    int mode = _view.session().get_device()->get_work_mode();
+    bool firstCh = true;
+    for (auto s : sigs) {
+        if (!s->enabled()) continue;
+        if (mode == LOGIC && s->signal_type() != SR_CHANNEL_LOGIC) continue;
+        if (mode == DSO && s->signal_type() != SR_CHANNEL_DSO) continue;
+        if (mode == ANALOG && s->signal_type() != SR_CHANNEL_ANALOG) continue;
+        if (firstCh) {
+            ts << "Channels: ";
+            firstCh = false;
+        } else {
+            ts << " ";
+        }
+        int chIdx = s->probe()->index;
+        QString chName = QString::fromUtf8(s->probe()->name);
+        ts << "CH" << chIdx << "(" << chName << ")";
+    }
+    if (!firstCh) ts << "\n";
+    ts << "----------------------------------------\n";
+
+    auto &decodeTraces = _view.session().get_decode_signals();
+    if (decodeTraces.empty()) {
+        ts << "(No decoded data available)\n";
+    } else {
+        for (auto dtrace : decodeTraces) {
+            if (!dtrace || !dtrace->enabled()) continue;
+            pv::data::DecoderStack *dstack = dtrace->decoder();
+            if (!dstack) continue;
+
+            ts << "\n--- Decoder: " << dtrace->get_name() << " ---\n";
+
+            auto rowsMap = dstack->get_rows_gshow();
+            for (const auto &pair : rowsMap) {
+                if (!pair.second) continue;
+                const auto &row = pair.first;
+                std::vector<pv::data::decode::Annotation*> annotations;
+                dstack->get_annotation_subset(annotations, row, start_sample, end_sample);
+
+                for (auto ann : annotations) {
+                    if (!ann) continue;
+                    double annStart = ann->start_sample() / (double)samplerate;
+                    double annEnd = ann->end_sample() / (double)samplerate;
+                    ts << "[" << QString::number(annStart, 'f', 9)
+                       << " - " << QString::number(annEnd, 'f', 9) << "] ";
+                    const auto &annTexts = ann->annotations();
+                    for (const auto &atxt : annTexts) {
+                        ts << atxt << " ";
+                    }
+                    ts << "\n";
+                }
+            }
+        }
+    }
+
+    // Determine file path (skip for clipboard)
+    QString filePath;
+    if (target != EXPORT_TO_CLIPBOARD) {
+        QString defaultDir = AppConfig::Instance().userHistory.protocolExportPath;
+        if (defaultDir.isEmpty()) defaultDir = QDir::homePath();
+
+        QString defaultName = QString("decode_%1s_%2s.txt")
+            .arg(startTime, 0, 'f', 6)
+            .arg(duration, 0, 'f', 6);
+
+        filePath = QFileDialog::getSaveFileName(this,
+            L_S(STR_PAGE_DLG, S_ID(IDS_DLG_WAVE_EXPORT_DECODE), "Export Decoded Data"),
+            defaultDir + "/" + defaultName,
+            "Text Files (*.txt)");
+        if (filePath.isEmpty()) return;
+        QFileInfo fi(filePath);
+        AppConfig::Instance().userHistory.protocolExportPath = fi.absolutePath();
+    }
+
+    // Copy to clipboard
+    if (target == EXPORT_TO_CLIPBOARD) {
+        QApplication::clipboard()->setText(text);
+        QMessageBox::information(this, "Copy Data",
+            "Decoded data copied to clipboard.");
+        return;
+    }
+
+    // Write file
+    QFile file(filePath);
+    if (!file.open(QIODevice::WriteOnly | QIODevice::Text)) {
+        QMessageBox::warning(this, "Export Decoded Data", "Failed to write file: " + filePath);
+        return;
+    }
+    file.write(text.toUtf8());
+    file.close();
+
+    QMessageBox::information(this, "Export Decoded Data",
+        QString("Decoded data saved to:\n%1").arg(filePath));
 }
 
 } // namespace view

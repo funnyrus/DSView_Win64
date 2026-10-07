@@ -73,6 +73,7 @@ private slots:
     void on_actionDefault_triggered();
     void on_actionOpen_triggered();
     void on_actionCapture_triggered();
+    void on_actionWaveSel_toggled(bool checked);
 
 private:
     SigSession* _session;
@@ -87,6 +88,7 @@ private:
     QAction *_action_save;
     QAction *_action_export;
     QAction *_action_capture;
+    QAction *_action_wavesel;
 };
 
 } // namespace toolbars

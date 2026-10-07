@@ -148,6 +148,10 @@
         "text": "截屏(&C)"
     },
     {
+        "id": "IDS_TOOLBAR_WAVE_SELECT",
+        "text": "框选模式"
+    },
+    {
         "id": "IDS_TOOLBAR_HELP",
         "text": "帮助(&H)"
     },

@@ -790,5 +790,21 @@
     {
         "id": "IDS_FFT_MODE_LINEARRSM",
         "text": "线性 RMS"
+    },
+    {
+        "id": "IDS_DLG_WAVE_EXPORT_CSV",
+        "text": "波形存储"
+    },
+    {
+        "id": "IDS_DLG_WAVE_EXPORT_DECODE",
+        "text": "数据存储"
+    },
+    {
+        "id": "IDS_DLG_WAVE_COPY_WAVEFORM",
+        "text": "复制波形"
+    },
+    {
+        "id": "IDS_DLG_WAVE_COPY_DATA",
+        "text": "复制数据"
     }
 ]

@@ -63,11 +63,16 @@ protected:
      */
     Signal(const Signal &s, sr_channel * const probe);
 
-public: 
+public:
     /**
      * Returns true if the trace is visible and enabled.
      */
     bool enabled();
+
+    /**
+     * Returns the underlying channel object.
+     */
+    inline const sr_channel* probe() const { return _probe; }
 
     /**
      * Sets the name of the signal.

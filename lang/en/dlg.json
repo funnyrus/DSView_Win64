@@ -790,5 +790,21 @@
     {
         "id": "IDS_FFT_MODE_LINEARRSM",
         "text": "Linear RMS"
+    },
+    {
+        "id": "IDS_DLG_WAVE_EXPORT_CSV",
+        "text": "Export Waveform CSV"
+    },
+    {
+        "id": "IDS_DLG_WAVE_EXPORT_DECODE",
+        "text": "Export Decoded Data"
+    },
+    {
+        "id": "IDS_DLG_WAVE_COPY_WAVEFORM",
+        "text": "Copy Waveform"
+    },
+    {
+        "id": "IDS_DLG_WAVE_COPY_DATA",
+        "text": "Copy Data"
     }
 ]
