@@ -178,6 +178,7 @@ private slots:
 signals:
     void measure_updated();
     void prgRate(int progress);
+    void locate_annotation(void *dstack, int row_col, qulonglong ann_row);
 
 private:
 	View        &_view;

@@ -49,7 +49,7 @@ set(DS_DESCRIPTION "A GUI for instruments of DreamSourceLab")
 
 set(DS_VERSION_MAJOR 1)
 set(DS_VERSION_MINOR 3)
-set(DS_VERSION_MICRO 2)
+set(DS_VERSION_MICRO 4)
 set(DS_VERSION_STRING  ${DS_VERSION_MAJOR}.${DS_VERSION_MINOR}.${DS_VERSION_MICRO})
 
 configure_file (
@@ -770,6 +770,12 @@ if(WIN32)
 		COMMAND ${CMAKE_COMMAND} -E copy_directory
 			"${CMAKE_CURRENT_SOURCE_DIR}/lang"
 			"${DSVIEW_OUTPUT_DIR}/lang"
+		COMMAND ${CMAKE_COMMAND} -E copy_if_different
+			"${CMAKE_CURRENT_SOURCE_DIR}/NEWS25"
+			"${DSVIEW_OUTPUT_DIR}/NEWS25"
+		COMMAND ${CMAKE_COMMAND} -E copy_if_different
+			"${CMAKE_CURRENT_SOURCE_DIR}/NEWS31"
+			"${DSVIEW_OUTPUT_DIR}/NEWS31"
 		COMMENT "Copying runtime data next to DSView.exe"
 		VERBATIM
 	)

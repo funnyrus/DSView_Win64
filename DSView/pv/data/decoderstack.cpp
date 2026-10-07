@@ -356,7 +356,7 @@ bool DecoderStack::list_annotation(pv::data::decode::Annotation *ann,
 
 
 bool DecoderStack::list_row_title(int row, QString &title)
-{ 
+{
     for (auto i = _rows.begin();i != _rows.end(); i++) {
         auto iter = _rows_lshow.find((*i).first);
         if (iter != _rows_lshow.end() && (*iter).second) {
@@ -367,6 +367,20 @@ bool DecoderStack::list_row_title(int row, QString &title)
         }
     }
     return 0;
+}
+
+int DecoderStack::list_row_index(const Row &row)
+{
+    int index = 0;
+    for (auto i = _rows.begin(); i != _rows.end(); i++) {
+        auto iter = _rows_lshow.find((*i).first);
+        if (iter != _rows_lshow.end() && (*iter).second) {
+            if (!((*i).first < row) && !(row < (*i).first))
+                return index;
+            index++;
+        }
+    }
+    return -1;
 }
 
 void DecoderStack::clear()

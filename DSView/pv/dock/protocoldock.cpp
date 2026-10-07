@@ -212,6 +212,7 @@ ProtocolDock::ProtocolDock(QWidget *parent, view::View &view, SigSession *sessio
 
     connect(this, SIGNAL(protocol_updated()), this, SLOT(update_model()));
     connect(_table_view, SIGNAL(clicked(QModelIndex)), this, SLOT(item_clicked(QModelIndex)));
+    connect(&_view, SIGNAL(locate_annotation(void*,int,qulonglong)), this, SLOT(on_locate_annotation(void*,int,qulonglong)));
 
     connect(_table_view->horizontalHeader(), SIGNAL(sectionResized(int,int,int)), 
                     this, SLOT(column_resize(int, int, int)));
@@ -592,6 +593,35 @@ void ProtocolDock::item_clicked(const QModelIndex &index)
             }while(1);
         }
     }
+}
+
+void ProtocolDock::on_locate_annotation(void *dstack, int row_col, qulonglong ann_row)
+{
+    pv::data::DecoderModel *decoder_model = _session->get_decoder_model();
+    if (!decoder_model || row_col < 0)
+        return;
+    if ((void*)decoder_model->getDecoderStack() != dstack)
+        return;
+
+    QModelIndex index = decoder_model->index((int)ann_row, row_col);
+    if (!index.isValid())
+        return;
+
+    // Bring the dock to the front if it is hidden
+    QWidget *p = this->parentWidget();
+    while (p && !qobject_cast<QDockWidget*>(p))
+        p = p->parentWidget();
+    if (p) {
+        QDockWidget *dock = qobject_cast<QDockWidget*>(p);
+        if (!dock->isVisible()) {
+            dock->show();
+        }
+        dock->raise();
+    }
+
+    _table_view->scrollTo(index);
+    _table_view->setCurrentIndex(index);
+    item_clicked(index);
 }
 
 void ProtocolDock::column_resize(int index, int old_size, int new_size)

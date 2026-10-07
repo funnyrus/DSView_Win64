@@ -343,8 +343,9 @@ signals:
     void cursor_moved();
     void measure_updated();
     void prgRate(int progress);
+    void locate_annotation(void *dstack, int row_col, qulonglong ann_row);
     void resize();
-    void auto_trig(int index);   
+    void auto_trig(int index);
 
 private:
     static bool compare_trace_v_offsets( const Trace *a, const Trace *b);

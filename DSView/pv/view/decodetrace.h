@@ -136,6 +136,15 @@ public:
     QRectF get_rect(DecodeSetRegions type, int y, int right);
 
     /**
+     * Hit-test: find the annotation row and table position at a viewport point.
+     * @param pt the point in viewport coordinates.
+     * @param row_col receives the protocol-table column (row title index).
+     * @param ann_row receives the protocol-table row (annotation index).
+     * @return true if an annotation was found under the point.
+     **/
+    bool annotation_at(const QPoint &pt, int &row_col, uint64_t &ann_row);
+
+    /**
      * decode region
      **/
     void frame_ended();

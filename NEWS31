@@ -1,3 +1,35 @@
+v1.3.4 -- (2026-10-07)
+----------
+  --common (Su Zifang Xuan fork additions)
+  *Add waveform region selection: left-drag on the waveform to select a
+   region, then right-click the selection to export it as CSV or decoded
+   text, or copy it to the clipboard.
+  *Add a "Wave Select" toolbar toggle to switch between region selection
+   and the original drag-to-pan behavior. The state is remembered.
+  *Right-click a decode annotation on the waveform to jump to its entry
+   in the decode protocol list.
+  *Right-drag now also pans the time view.
+  *Support building on Windows with the MSYS2 / MinGW-w64 toolchain.
+
+v1.3.3 -- (2024-06-18)
+----------
+  --common
+  *Fix auto-connecting issue post sleep wake-up.
+  *Fix input method and shortcut functionality problems.
+  *Fix file save path update delay on Win10.
+  *Fix macOS pop-up window closure after saving issue.
+
+  --for logic analyzer
+  *Update firmware for device compatibility.
+  *Fix saving issues for part of waveform.
+  *Fix time duration error for CSV exports.
+  *Fix file and waveform inconsistencies in loop mode.
+  *Fix decoder errors and inconsistencies in loop mode.
+  *Fix the Numbers and State decoder issue for CH15.
+
+  --for oscilloscope
+  *Fix manual calibration UI display problem.
+  
 v1.3.2 (2024-04-27)
 ----------
   --common

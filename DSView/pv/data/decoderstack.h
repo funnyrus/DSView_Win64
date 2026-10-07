@@ -144,7 +144,9 @@ public:
 
 
     bool list_row_title(int row, QString &title);
-	 
+
+    int list_row_index(const decode::Row &row);
+
 	void clear();
     void init();
 	uint64_t get_max_sample_count();

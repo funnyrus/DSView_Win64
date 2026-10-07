@@ -1315,6 +1315,22 @@ void Viewport::mouseReleaseEvent(QMouseEvent *event)
     }
     */
 
+    // Right-click (no drag, no active selection) on a decode annotation
+    // locates it in the protocol list
+    if (event->button() == Qt::RightButton && _type == TIME_VIEW
+        && !_has_selection && _mouse_down_point == event->pos()) {
+        for (auto d : _view.session().get_decode_signals()) {
+            if (!d || !d->enabled())
+                continue;
+            int row_col = -1;
+            uint64_t ann_row = 0;
+            if (d->annotation_at(event->pos(), row_col, ann_row)) {
+                locate_annotation((void*)d->decoder(), row_col, ann_row);
+                break;
+            }
+        }
+    }
+
     update(UpdateEventType::UPDATE_EV_MS_UP);
 }
 

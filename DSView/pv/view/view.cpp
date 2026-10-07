@@ -195,6 +195,7 @@ View::View(SigSession *session, pv::toolbars::SamplingBar *sampling_bar, QWidget
     connect(_time_viewport, SIGNAL(measure_updated()),this, SLOT(on_measure_updated()));
     connect(_time_viewport, SIGNAL(prgRate(int)), this, SIGNAL(prgRate(int)));
     connect(_fft_viewport, SIGNAL(measure_updated()), this, SLOT(on_measure_updated()));
+    connect(_time_viewport, SIGNAL(locate_annotation(void*,int,qulonglong)), this, SIGNAL(locate_annotation(void*,int,qulonglong)));
 
     connect(_vsplitter, SIGNAL(splitterMoved(int,int)), this, SLOT(splitterMoved(int, int)));
       

@@ -341,6 +341,82 @@ void DecodeTrace::paint_mid(QPainter &p, int left, int right, QColor fore, QColo
     }
 }
 
+bool DecodeTrace::annotation_at(const QPoint &pt, int &row_col, uint64_t &ann_row)
+{
+    using namespace pv::data::decode;
+
+    row_col = -1;
+    ann_row = 0;
+
+    if (!_decoder_stack)
+        return false;
+
+    const QRect rect = get_view_rect();
+    if (!rect.contains(pt))
+        return false;
+
+    const double scale = _view->scale();
+    assert(scale > 0);
+    double samplerate = _decoder_stack->samplerate();
+    if (samplerate == 0.0)
+        samplerate = 1.0;
+
+    const int64_t pixels_offset = _view->offset();
+    const double samples_per_pixel = samplerate * scale;
+    const uint64_t click_sample = (uint64_t)max((pt.x() + pixels_offset) *
+        samples_per_pixel, 0.0);
+
+    const int annotation_height = _view->get_signalHeight();
+    int y = get_y() - (_totalHeight - annotation_height) * 0.5;
+
+    for (auto dec : _decoder_stack->stack()) {
+        if (dec->shown()) {
+            const std::map<const Row, bool> rows = _decoder_stack->get_rows_gshow();
+            for (std::map<const Row, bool>::const_iterator i = rows.begin();
+                i != rows.end(); i++) {
+                if ((*i).first.decoder() == dec->decoder() &&
+                    _decoder_stack->has_annotations((*i).first)) {
+                    if ((*i).second) {
+                        const Row &row = (*i).first;
+
+                        if (pt.y() >= y - annotation_height / 2 &&
+                            pt.y() <= y + annotation_height / 2) {
+                            std::vector<Annotation*> annotations;
+                            _decoder_stack->get_annotation_subset(annotations, row,
+                                click_sample, click_sample);
+
+                            for (Annotation *a : annotations) {
+                                if (a && a->start_sample() <= click_sample &&
+                                    click_sample <= a->end_sample()) {
+                                    row_col = _decoder_stack->list_row_index(row);
+                                    // get_annotation_index() counts every annotation
+                                    // starting at or before the given sample, so the
+                                    // 0-based table row is one less.
+                                    ann_row = _decoder_stack->get_annotation_index(row, a->start_sample()) - 1;
+                                    return row_col >= 0;
+                                }
+                            }
+                        }
+
+                        y += annotation_height;
+                    }
+                }
+            }
+
+            // Meta rows occupy vertical space too
+            for (auto meta : _decoder_stack->get_meta_streams(dec->decoder())) {
+                if (!meta->shown() || meta->get_sample_count() == 0)
+                    continue;
+                y += annotation_height * MetaRowUnits;
+            }
+        } else {
+            y += annotation_height;
+        }
+    }
+
+    return false;
+}
+
 void DecodeTrace::paint_fore(QPainter &p, int left, int right, QColor fore, QColor back)
 {
 	using namespace pv::data::decode;

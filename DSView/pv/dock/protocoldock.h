@@ -140,7 +140,8 @@ private slots:
     void search_done();
     void search_changed();
     void search_update();
-    void show_protocol_select(); 
+    void show_protocol_select();
+    void on_locate_annotation(void *dstack, int row_col, qulonglong ann_row);
 
 private:
     SigSession *_session;

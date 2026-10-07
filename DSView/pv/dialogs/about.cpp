@@ -60,6 +60,7 @@ About::About(QWidget *parent) :
     QString version = tr("<font size=24>DSView %1 (%2)</font><br />")
                       .arg(QApplication::applicationVersion())
                       .arg(arch);
+    version += tr("<font size=14><b>苏紫方璇修改版 (Su Zifang Xuan fork)</b></font><br /><br />");
 
     QString site_url = QApplication::organizationDomain();
     if (site_url.startsWith("http") == false){
