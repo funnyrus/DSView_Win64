@@ -104,7 +104,19 @@ bool AppControl::Init()
     }
   
 #endif
-    
+
+    // Portable builds ship the Python standard library next to the
+    // executable (python-home/lib/pythonX.Y); use it when present so the
+    // decoders keep working on machines without a Python installation.
+    {
+        static QString pyHome = QCoreApplication::applicationDirPath() + "/python-home";
+        QDir pyHomeDir;
+        if (pyHomeDir.exists(pyHome)) {
+            static std::wstring pyHomeW = pyHome.toStdWString();
+            srd_set_python_home(pyHomeW.c_str());
+        }
+    }
+
     //the python script path of decoder
     char path[256] = {0};
     QString dir = GetDecodeScriptDir();   
